@@ -57,14 +57,14 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define LED_Pin GPIO_PIN_13
-#define LED_GPIO_Port GPIOC
-#define IR_SENSOR_Pin GPIO_PIN_0
-#define IR_SENSOR_GPIO_Port GPIOA
-#define GSM_RI_Pin GPIO_PIN_1
-#define GSM_RI_GPIO_Port GPIOA
-#define FLASH_CS_Pin GPIO_PIN_4
-#define FLASH_CS_GPIO_Port GPIOA
+#define INT_OPTICAL_SENSOR_Pin GPIO_PIN_0
+#define INT_OPTICAL_SENSOR_GPIO_Port GPIOA
+#define INT_LSM6DSL_Pin GPIO_PIN_1
+#define INT_LSM6DSL_GPIO_Port GPIOA
+#define OPTICAL_SENS_SHUTDOWN_Pin GPIO_PIN_2
+#define OPTICAL_SENS_SHUTDOWN_GPIO_Port GPIOA
+#define KEY_BUT_Pin GPIO_PIN_3
+#define KEY_BUT_GPIO_Port GPIOA
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */

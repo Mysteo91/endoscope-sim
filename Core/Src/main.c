@@ -19,11 +19,9 @@
 /* Includes ------------------------------------------------------------------*/
 #include <stdio.h>
 #include "main.h"
-#include "dma.h"
+#include "crc.h"
 #include "i2c.h"
 #include "rtc.h"
-#include "spi.h"
-#include "usart.h"
 #include "gpio.h"
 #include "vl6180_api.h"
 
@@ -306,43 +304,49 @@ void RangeState(void) {
         SetDisplayString(buffer);
     }
 
-
-    if (asd == 1) {
-        asd = 0;
-        TimeStarted = g_TickCnt;
-        State.ScaleSwapCnt++;
-        if (State.ScaleSwapCnt % (max_scale + 1) == max_scale) {
-            State.AutoScale = 1;
-            scaling = max_scale;
-        }
-        else {
-#if ALLOW_DISABLE_WAF_FROM_BLUE_BUTTON
-            /* togle filtering every time we roll over all scaling(pass by autoscale) */
-            if (State.AutoScale)
-                State.FilterEn = !State.FilterEn;
-#endif
-            State.AutoScale = 0;
-            scaling = State.InitScale + (State.ScaleSwapCnt % max_scale);
-            if (scaling > max_scale)
-                scaling = scaling - (max_scale);
-        }
-        status = VL6180_UpscaleGetScaling(theVL6180Dev);
-        if (status == 0 )
-        {
-            __NOP();
-        }
-        status = VL6180_UpscaleSetScaling(theVL6180Dev, scaling);
-
-        if (status<0) {
-            AbortErr("ErUp");
-            State.mode = InitErr;
-        }
-        else {
-            /* do not check status may fail when filter support not active */
-            VL6180_FilterSetState(theVL6180Dev, State.FilterEn);
-            DoScalingSwap(scaling);
-        }
+if (HAL_GPIO_ReadPin(KEY_BUT_GPIO_Port, KEY_BUT_Pin) == GPIO_PIN_RESET)
+{
+    while (HAL_GPIO_ReadPin(KEY_BUT_GPIO_Port, KEY_BUT_Pin) == GPIO_PIN_RESET)
+    {
+        HAL_Delay(10);
     }
+
+
+    TimeStarted = g_TickCnt;
+    State.ScaleSwapCnt++;
+    if (State.ScaleSwapCnt % (max_scale + 1) == max_scale) {
+        State.AutoScale = 1;
+        scaling = max_scale;
+    }
+    else {
+#if ALLOW_DISABLE_WAF_FROM_BLUE_BUTTON
+        /* togle filtering every time we roll over all scaling(pass by autoscale) */
+        if (State.AutoScale)
+            State.FilterEn = !State.FilterEn;
+#endif
+        State.AutoScale = 0;
+        scaling = State.InitScale + (State.ScaleSwapCnt % max_scale);
+        if (scaling > max_scale)
+            scaling = scaling - (max_scale);
+    }
+    status = VL6180_UpscaleGetScaling(theVL6180Dev);
+    if (status == 0 )
+    {
+        __NOP();
+    }
+    status = VL6180_UpscaleSetScaling(theVL6180Dev, scaling);
+
+    if (status<0) {
+        AbortErr("ErUp");
+        State.mode = InitErr;
+    }
+    else {
+        /* do not check status may fail when filter support not active */
+        VL6180_FilterSetState(theVL6180Dev, State.FilterEn);
+        DoScalingSwap(scaling);
+    }
+}
+
 }
 #define AlrmDispTime        800
 
@@ -605,12 +609,14 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_RTC_Init();
-  MX_DMA_Init();
-  MX_USART1_UART_Init();
-  MX_USART2_UART_Init();
-  MX_SPI1_Init();
   MX_I2C1_Init();
+  MX_I2C2_Init();
+  MX_CRC_Init();
   /* USER CODE BEGIN 2 */
+    HAL_GPIO_WritePin(OPTICAL_SENS_SHUTDOWN_GPIO_Port, OPTICAL_SENS_SHUTDOWN_Pin, GPIO_PIN_RESET);
+    HAL_Delay(1000);
+    HAL_GPIO_WritePin(OPTICAL_SENS_SHUTDOWN_GPIO_Port, OPTICAL_SENS_SHUTDOWN_Pin, GPIO_PIN_SET);
+    HAL_Delay(1000);
     VL6180_WaitDeviceBooted(theVL6180Dev);
     VL6180_InitData(theVL6180Dev);
     State.InitScale=VL6180_UpscaleGetScaling(theVL6180Dev);
@@ -704,7 +710,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL9;
+  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL6;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -719,12 +725,13 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK)
   {
     Error_Handler();
   }
-  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_RTC;
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_RTC|RCC_PERIPHCLK_USB;
   PeriphClkInit.RTCClockSelection = RCC_RTCCLKSOURCE_LSE;
+  PeriphClkInit.UsbClockSelection = RCC_USBCLKSOURCE_PLL;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
     Error_Handler();
